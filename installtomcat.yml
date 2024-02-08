@@ -1,0 +1,49 @@
+---
+- name: Install and Configure Tomcat
+  hosts: group
+  become: yes
+
+  tasks:
+    - name: Update apt package cache
+      apt:
+        update_cache: yes
+
+    - name: Install OpenJDK
+      apt:
+        name: openjdk-8-jdk
+        state: present
+
+    - name: Download and extract Apache Tomcat
+      get_url:
+        url: "http://archive.apache.org/dist/tomcat/tomcat{{ tomcat_version }}/v{{ tomcat_version }}.tar.gz"
+        dest: "/tmp/tomcat.tar.gz"
+        validate_certs: no
+      tags: tomcat
+
+    - name: Create Tomcat directory
+      file:
+        path: "{{ tomcat_install_dir }}"
+        state: directory
+      tags: tomcat
+
+    - name: Extract Tomcat archive
+      ansible.builtin.unarchive:
+        src: "/tmp/tomcat.tar.gz"
+        dest: "{{ tomcat_install_dir }}"
+        remote_src: yes
+      tags: tomcat
+
+    - name: Configure Tomcat port
+      lineinfile:
+        path: "{{ tomcat_install_dir }}/conf/server.xml"
+        regexp: 'Connector port="8080"'
+        line: 'Connector port="8002"'
+      notify: restart tomcat
+      tags: tomcat
+
+  handlers:
+    - name: restart tomcat
+      ansible.builtin.service:
+        name: tomcat
+        state: restarted
+
